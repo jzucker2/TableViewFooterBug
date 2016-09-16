@@ -16,14 +16,13 @@ class BuggyTableViewController: UITableViewController, NSFetchedResultsControlle
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        tableView.allowsSelection = false
+        
         tableView.register(TestItemTableViewCell.self, forCellReuseIdentifier: TestItemTableViewCell.reuseIdentifier())
         tableView.register(ButtonHeaderFooterView.self, forHeaderFooterViewReuseIdentifier: ButtonHeaderFooterView.reuseIdentifier())
 
-        // Uncomment the following line to preserve selection between presentations
-        // self.clearsSelectionOnViewWillAppear = false
-
-        // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
-        // self.navigationItem.rightBarButtonItem = self.editButtonItem()
+        self.navigationItem.title = "Section Footer Bug"
+        self.navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Remove item", style: .plain, target: self, action: #selector(self.removeNewestTestItemButtonTapped(sender:)))
         let allTestItemsFetchRequest: NSFetchRequest<TestItem> = TestItem.fetchRequest()
         allTestItemsFetchRequest.sortDescriptors = [NSSortDescriptor(key: #keyPath(TestItem.title), ascending: true)]
         fetchedResultsController = NSFetchedResultsController(fetchRequest: allTestItemsFetchRequest, managedObjectContext: viewContext, sectionNameKeyPath: nil, cacheName: nil)
@@ -48,6 +47,24 @@ class BuggyTableViewController: UITableViewController, NSFetchedResultsControlle
             let createdTestItem = TestItem(context: context)
             createdTestItem.title = "\(Date())"
             do {
+                try context.save()
+            } catch {
+                fatalError(error.localizedDescription)
+            }
+        }
+    }
+    
+    func removeNewestTestItemButtonTapped(sender: UIBarButtonItem) {
+        let newestItemFetchRequest: NSFetchRequest<TestItem> = TestItem.fetchRequest()
+        let creationDateSortDescriptor = NSSortDescriptor(key: #keyPath(TestItem.creationDate), ascending: false)
+        newestItemFetchRequest.sortDescriptors = [creationDateSortDescriptor]
+        UIApplication.persistentContainer.performBackgroundTask { (context) in
+            do {
+                let results = try newestItemFetchRequest.execute()
+                guard let firstResult = results.first else {
+                    return
+                }
+                context.delete(firstResult)
                 try context.save()
             } catch {
                 fatalError(error.localizedDescription)
